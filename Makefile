@@ -1,5 +1,5 @@
-OUT := go-deploy
-PKG := github.com/dedalusj/go-deploy
+OUT := portainer-endpoints
+PKG := github.com/dedalusj/portainer-endpoints
 VERSION := $(shell git describe --always --long)
 PKG_LIST := $(shell go list ${PKG}/... | grep -v /vendor/)
 GO_FILES := $(shell find . -name '*.go' | grep -v /vendor/)
