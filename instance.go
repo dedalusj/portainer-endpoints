@@ -69,7 +69,7 @@ func getTagValue(tag string) (string, error) {
 
 	instance, err := getInstance(instanceId)
 	if err != nil {
-		return "", errors.Wrap(err, "Getting instance")
+		return "", errors.Wrapf(err, "Getting info for instance id [%s]", instanceId)
 	}
 
 	tagValue, ok := instance.Tags["Name"]
@@ -99,7 +99,7 @@ func getInstances(instanceIds []*string, filters map[string][]*string) ([]*Insta
 	}
 	resp, err := svc.DescribeInstances(params)
 	if err != nil {
-		return []*Instance{}, errors.Wrap(err, "Describing instances")
+		return []*Instance{}, errors.Wrapf(err, "Describing instances params=[%s]", params)
 	}
 
 	instances := []*Instance{}
@@ -123,7 +123,7 @@ func getFilteredInstances(tag string) ([]*Instance, error) {
 	tagKey := "tag:" + tag
 	tagValue, err := getTagValue(tag)
 	if err != nil {
-		return []*Instance{}, errors.Wrap(err, "Getting tag value")
+		return []*Instance{}, errors.Wrapf(err, "Getting value for tag [%s]", tag)
 	}
 
 	filters := map[string][]*string{
