@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 	"io/ioutil"
+	"github.com/aws/aws-sdk-go/aws"
 )
 
 func stringPtr(s string) *string { return &s }
@@ -87,7 +88,9 @@ func prepareFilters(filters map[string][]*string) []*ec2.Filter {
 }
 
 func getInstances(instanceIds []*string, filters map[string][]*string) ([]*Instance, error) {
-	s := session.Must(session.NewSession())
+        s := session.Must(session.NewSessionWithOptions(session.Options{
+		Config: aws.Config{Region: aws.String("ap-southeast-2")},
+	}))
 	svc := ec2.New(s)
 	params := &ec2.DescribeInstancesInput{
 		Filters: prepareFilters(filters),
