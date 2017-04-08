@@ -66,7 +66,7 @@ func run(c *cli.Context) {
 		time.Sleep(config.Interval)
 		err := fetchEndpoints(config)
 		if err != nil {
-			logger.WithField("tag", config.Tag).Warnf("Error while fetching endpoints: %s", err)
+			logger.WithField("tag", config.Tag).Warnf("Error while fetching endpoints: %+v", err)
 		}
 	}
 }

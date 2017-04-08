@@ -10,6 +10,7 @@ import (
 	"time"
 	"io/ioutil"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/pkg/errors"
 )
 
 func stringPtr(s string) *string { return &s }
@@ -44,7 +45,7 @@ func getInstanceId() (string, error) {
 	client := &http.Client{Timeout: time.Second}
 	resp, err := client.Get("http://169.254.169.254/latest/meta-data/instance-id")
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "Querying EC2 metadata")
 	}
 	defer resp.Body.Close()
 
@@ -54,7 +55,7 @@ func getInstanceId() (string, error) {
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "Reading EC2 metadata query body")
 	}
 
 	return string(body), nil
@@ -63,12 +64,12 @@ func getInstanceId() (string, error) {
 func getTagValue(tag string) (string, error) {
 	instanceId, err := getInstanceId()
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "Getting instance ID")
 	}
 
 	instance, err := getInstance(instanceId)
 	if err != nil {
-		return "", nil
+		return "", errors.Wrap(err, "Getting instance")
 	}
 
 	tagValue, ok := instance.Tags["Name"]
@@ -98,7 +99,7 @@ func getInstances(instanceIds []*string, filters map[string][]*string) ([]*Insta
 	}
 	resp, err := svc.DescribeInstances(params)
 	if err != nil {
-		return []*Instance{}, err
+		return []*Instance{}, errors.Wrap(err, "Describing instances")
 	}
 
 	instances := []*Instance{}
@@ -113,7 +114,7 @@ func getInstances(instanceIds []*string, filters map[string][]*string) ([]*Insta
 func getInstance(instanceId string) (*Instance, error) {
 	instances, err := getInstances([]*string{&instanceId}, map[string][]*string{})
 	if err != nil {
-		return &Instance{}, err
+		return &Instance{}, errors.Wrap(err, "Getting instances")
 	}
 	return instances[0], nil
 }
@@ -122,7 +123,7 @@ func getFilteredInstances(tag string) ([]*Instance, error) {
 	tagKey := "tag:" + tag
 	tagValue, err := getTagValue(tag)
 	if err != nil {
-		return []*Instance{}, err
+		return []*Instance{}, errors.Wrap(err, "Getting tag value")
 	}
 
 	filters := map[string][]*string{
