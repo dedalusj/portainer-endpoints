@@ -30,4 +30,8 @@ coverage:
 	@go test -short -coverprofile=coverage.out ${PKG_LIST}
 	@go tool cover -html coverage.out
 
+build-docker:
+	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags="-X main.version=${VERSION}" -o ${OUT} ${PKG}
+	docker build -t "dedalusj/portainer-endpoints:${VERSION}" .
+
 .PHONY: run build vet lint
