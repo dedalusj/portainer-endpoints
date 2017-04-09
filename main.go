@@ -7,17 +7,15 @@ import (
 	"time"
 
 	"github.com/urfave/cli"
-	"github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 )
 
 var version string
 
-func createLogger() *logrus.Logger {
-	logger := logrus.New()
-	logger.Out = os.Stderr
-	logger.Formatter = &logrus.TextFormatter{}
-	logger.Level = logrus.InfoLevel
-	return logger
+func init() {
+	log.SetOutput(os.Stderr)
+	log.SetFormatter(&log.TextFormatter{})
+	log.SetLevel(log.InfoLevel)
 }
 
 func writeToFile(filepath, content string) error {
@@ -53,20 +51,22 @@ func fetchEndpoints(config *Config) error {
 }
 
 func run(c *cli.Context) {
-	logger := createLogger()
 	config, err := NewConfig(c)
 	if err != nil {
-		logger.Fatal(err)
-
+		log.Fatal(err)
 	}
 
-	logger.WithField("version", version).Info("Portainer endpoints manager")
+	log.WithField("version", version).Info("Portainer endpoints manager")
+
+	if config.Debug {
+		log.SetLevel(log.DebugLevel)
+	}
 
 	for {
 		time.Sleep(config.Interval)
 		err := fetchEndpoints(config)
 		if err != nil {
-			logger.WithField("tag", config.Tag).Warnf("Error while fetching endpoints: %s", err)
+			log.WithField("tag", config.Tag).Warnf("Error while fetching endpoints: %s", err)
 		}
 	}
 }

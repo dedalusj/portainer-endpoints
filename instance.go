@@ -2,15 +2,18 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"net/http"
+	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/pkg/errors"
+	log "github.com/Sirupsen/logrus"
 	"time"
 	"io/ioutil"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/pkg/errors"
+	"net/http"
 )
 
 func stringPtr(s string) *string { return &s }
@@ -58,6 +61,8 @@ func getInstanceId() (string, error) {
 		return "", errors.Wrap(err, "Reading EC2 metadata query body")
 	}
 
+	instanceId := string(body)
+	log.WithField("instanceId", instanceId).Debug("Found id for current instance")
 	return string(body), nil
 }
 
@@ -72,31 +77,40 @@ func getTagValue(tag string) (string, error) {
 		return "", errors.Wrapf(err, "Getting info for instance id [%s]", instanceId)
 	}
 
-	tagValue, ok := instance.Tags["Name"]
+	tagValue, ok := instance.Tags[tag]
 	if !ok {
 		return "", fmt.Errorf("No tag [%s] present on instance [%s]", tag, instanceId)
 	}
 
+	log.WithFields(log.Fields{
+		"name": tag,
+		"value": tagValue,
+	}).Debug("Found tag value for current instance")
 	return tagValue, nil
 }
 
 func prepareFilters(filters map[string][]*string) []*ec2.Filter {
 	ec2Filter := []*ec2.Filter{}
 	for k, v := range filters {
-		ec2Filter = append(ec2Filter, &ec2.Filter{Name: &k, Values: v})
+		name := string(k)
+		ec2Filter = append(ec2Filter, &ec2.Filter{Name: &name, Values: v})
 	}
 	return ec2Filter
 }
 
 func getInstances(instanceIds []*string, filters map[string][]*string) ([]*Instance, error) {
         s := session.Must(session.NewSessionWithOptions(session.Options{
-		Config: aws.Config{Region: aws.String("ap-southeast-2")},
+		Config: aws.Config{Region: aws.String(os.Getenv("AWS_DEFAULT_REGION"))},
 	}))
 	svc := ec2.New(s)
-	params := &ec2.DescribeInstancesInput{
-		Filters: prepareFilters(filters),
-		InstanceIds: instanceIds,
+
+	params := &ec2.DescribeInstancesInput{}
+	if len(instanceIds) > 0 {
+		params.InstanceIds = instanceIds
+	} else if len(filters) > 0 {
+		params.Filters = prepareFilters(filters)
 	}
+
 	resp, err := svc.DescribeInstances(params)
 	if err != nil {
 		return []*Instance{}, errors.Wrapf(err, "Describing instances params=[%s]", params)
@@ -108,6 +122,13 @@ func getInstances(instanceIds []*string, filters map[string][]*string) ([]*Insta
 			instances = append(instances, NewInstance(i))
 		}
 	}
+
+	log.WithFields(log.Fields{
+		"number": len(instances),
+		"instanceIDs": awsutil.Prettify(instanceIds),
+		"filters": awsutil.Prettify(filters),
+	}).Debug("Fetched instances")
+
 	return instances, nil
 }
 
@@ -120,6 +141,8 @@ func getInstance(instanceId string) (*Instance, error) {
 }
 
 func getFilteredInstances(tag string) ([]*Instance, error) {
+	log.WithField("tag", tag).Debug("Fetching instances with tag")
+
 	tagKey := "tag:" + tag
 	tagValue, err := getTagValue(tag)
 	if err != nil {
