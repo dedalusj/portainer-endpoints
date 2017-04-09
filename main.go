@@ -36,7 +36,11 @@ func fetchEndpoints(config *Config) error {
 	}
 
 	endpoints := createEndpoints(instances, config.Docker)
-	b, err := json.Marshal(endpoints)
+	endpoints = append(endpoints, &Endpoint{
+		Name: "local",
+		URL: "unix:///var/run/docker.sock",
+	})
+	b, err := json.MarshalIndent(endpoints, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -44,6 +48,7 @@ func fetchEndpoints(config *Config) error {
 	if config.OutputFile == "" {
 		fmt.Print(string(b))
 	} else {
+		log.WithField("file", config.OutputFile).Debug("Writing to output file")
 		writeToFile(config.OutputFile, string(b))
 	}
 
