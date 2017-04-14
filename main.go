@@ -142,12 +142,12 @@ func writeEndpoints(endpoints []Endpoint, output string) error {
 	}
 
 	if output == "" {
-		fmt.Print(string(b))
-	}
-
-	err = ioutil.WriteFile(output, b, 0644)
-	if err != nil {
-		return errors.Wrapf(err, "Failed to write endpoints file to [%s]", output)
+		fmt.Printf("%s\n", string(b))
+	} else {
+		err = ioutil.WriteFile(output, b, 0644)
+		if err != nil {
+			return errors.Wrapf(err, "Failed to write endpoints file to [%s]", output)
+		}
 	}
 
 	log.WithFields(log.Fields{
@@ -167,10 +167,10 @@ func run(c *Config, ec2Client ec2iface.EC2API) {
 	}
 
 	for {
-		time.Sleep(c.Interval)
 		instances, err := getInstances(tag, ec2Client)
 		if err != nil {
 			log.Warnf("Error while fetching instances: %s", err)
+			time.Sleep(c.Interval)
 			continue
 		}
 
@@ -185,8 +185,11 @@ func run(c *Config, ec2Client ec2iface.EC2API) {
 		err = writeEndpoints(endpoints, c.Output)
 		if err != nil {
 			log.Warnf("Error while writing endpoints: %s", err)
+			time.Sleep(c.Interval)
 			continue
 		}
+
+		time.Sleep(c.Interval)
 	}
 }
 
