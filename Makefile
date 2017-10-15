@@ -1,6 +1,6 @@
 OUT := portainer-endpoints
 PKG := github.com/dedalusj/portainer-endpoints
-VERSION := $(shell git describe --all)
+VERSION := $(shell git describe --tags)
 PKG_LIST := $(shell go list ${PKG}/... | grep -v /vendor/)
 GO_FILES := $(shell find . -name '*.go' | grep -v /vendor/)
 

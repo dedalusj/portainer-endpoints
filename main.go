@@ -23,6 +23,7 @@ const (
 
 var version string
 
+// main configuration object for the tool
 type Config struct {
 	Tag      string
 	Output   string
@@ -31,16 +32,20 @@ type Config struct {
 	Debug    bool
 }
 
+// docker endpoint information to be fed to Portainer
 type Endpoint struct {
 	Name string
 	URL  string
 }
 
+// EC2 instance information
 type Instance struct {
 	Name string
 	Ip   string
 }
 
+// create a new Instance object from the equivalent object
+// in the golang AWS SDK
 func NewInstance(instance *ec2.Instance) Instance {
 	ip := aws.StringValue(instance.PrivateIpAddress)
 	name := strings.Replace(ip, ".", "-", -1)
@@ -52,6 +57,7 @@ func NewInstance(instance *ec2.Instance) Instance {
 	return Instance{Name: name, Ip: ip}
 }
 
+// convenience method to compute the docker endpoint for an instance
 func (i Instance) GetEndpoint(port int) Endpoint {
 	url := fmt.Sprintf("tcp://%s:%d", i.Ip, port)
 	return Endpoint{
@@ -65,10 +71,11 @@ type Tag struct {
 	Value string
 }
 
+// create a new tag from a string of the format tagName=tagValue
 func NewTag(tag string) (Tag, error) {
 	pieces := strings.SplitN(tag, "=", 2)
 	if len(pieces) < 2 {
-		return Tag{}, fmt.Errorf("Invalid tag [%s]. Expected tag=value format", tag)
+		return Tag{}, fmt.Errorf("invalid tag [%s] expected tag=value format", tag)
 	}
 	t := Tag{Key: pieces[0], Value: pieces[1]}
 	log.WithFields(log.Fields{
@@ -93,6 +100,7 @@ func NewEC2Client() ec2iface.EC2API {
 	return ec2.New(s)
 }
 
+// logging initialization helper function
 func initLogging(debug bool) {
 	log.SetFormatter(&log.TextFormatter{})
 	log.SetOutput(os.Stderr)
@@ -102,6 +110,7 @@ func initLogging(debug bool) {
 	}
 }
 
+// fetch the list of running or pending EC2 instances with the given tag
 func getInstances(tag Tag, client ec2iface.EC2API) ([]Instance, error) {
 	params := &ec2.DescribeInstancesInput{
 		Filters: []*ec2.Filter{
@@ -135,6 +144,7 @@ func getInstances(tag Tag, client ec2iface.EC2API) ([]Instance, error) {
 	return instances, nil
 }
 
+// write the list of endpoints to the specified output file
 func writeEndpoints(endpoints []Endpoint, output string) error {
 	b, err := json.Marshal(endpoints)
 	if err != nil {
@@ -157,6 +167,11 @@ func writeEndpoints(endpoints []Endpoint, output string) error {
 	return nil
 }
 
+// main run loop of the tool performing the following steps
+// 1. fetch the EC2 instances with the given tags
+// 2. create the list of endpoints from them
+// 3. write the endpoints to the specified file
+// 4. sleep
 func run(c *Config, ec2Client ec2iface.EC2API) {
 	initLogging(c.Debug)
 	log.WithField("version", version).Info("Portainer Endpoints")
@@ -174,6 +189,7 @@ func run(c *Config, ec2Client ec2iface.EC2API) {
 			continue
 		}
 
+		// endpoints should always contain the local docker socket
 		endpoints := []Endpoint{{
 			Name: "local",
 			URL:  "unix:///var/run/docker.sock",
@@ -196,7 +212,7 @@ func run(c *Config, ec2Client ec2iface.EC2API) {
 func main() {
 	app := cli.NewApp()
 	app.Name = "ddns"
-	app.Usage = "Command line tool for dynamically generating domain entries for EC2 instances"
+	app.Usage = "Command line tool for dynamically generating a Portainer endpoint file from EC2 instances with a given tag"
 	app.Version = version
 
 	app.Flags = []cli.Flag{
@@ -218,7 +234,7 @@ func main() {
 		},
 		cli.DurationFlag{
 			Name:   "interval, i",
-			Usage:  "Interval for querying the EC2 isntances",
+			Usage:  "Interval for querying the EC2 instances",
 			Value:  30 * time.Second,
 			EnvVar: envPrefix + "INTERVAL",
 		},
