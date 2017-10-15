@@ -1,5 +1,5 @@
-DDNS
-====
+Portainer Endpoints
+===================
 
 [![Build Status](https://travis-ci.org/dedalusj/portainer-endpoints.svg?branch=master)](https://travis-ci.org/dedalusj/portainer-endpoints)
 
